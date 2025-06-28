@@ -163,12 +163,42 @@ if query_vi:
                     df_company = df_reviews[df_reviews['id'] == company_id]
 
                     if df_company.empty:
-                     st.info("⚠️ Chưa có dữ liệu review cho công ty này.")
+                        st.info("⚠️ Chưa có dữ liệu review cho công ty này.")
                     else:
-                     years = sorted(df_company['Năm'].unique(), reverse=True)[:3]
-                     years = sorted(years)
+                        st.write("### 📊 Tổng hợp nhanh từ review của nhân viên:")
 
-                     for year in years:
+                # Làm sạch dữ liệu để dự đoán
+                    df_company['Full_Review_clean'] = df_company['Full_Review'].astype(str).apply(clean_user_input)
+
+                # Load mô hình phân loại Recommend
+                    vectorizer = pickle.load(open("tfidf.pkl", "rb"))
+                    model = pickle.load(open("extratrees_model.pkl", "rb"))
+
+                    X = vectorizer.transform(df_company['Full_Review_clean'])
+                    preds = model.predict(X)
+                    total = len(preds)
+                    recommend_count = sum(preds)
+                    percent = recommend_count / total * 100
+                    score = round(percent * 5 / 100, 1)
+
+                    st.write(f"- Tổng số review: **{total}**")
+                    st.write(f"- Tỷ lệ Recommend: **{percent:.2f}%**")
+                    st.write(f"- Điểm tổng hợp: ⭐️ **{score}/5**")
+
+                    if percent >= 60:
+                        st.success("✅ Đánh giá tổng quan: Có thể cân nhắc làm việc tại đây.")
+                    elif percent <= 30:
+                        st.error("⚠️ Đánh giá tổng quan: Nhiều review không khuyến nghị, cần thận trọng.")
+                    else:
+                        st.info("ℹ️ Đánh giá tổng quan: Ý kiến trái chiều, nên tìm hiểu thêm.")
+
+                    st.divider()
+
+                # Phân tích chủ đề từng năm
+                    years = sorted(df_company['Năm'].unique(), reverse=True)[:3]
+                    years = sorted(years)
+
+                    for year in years:
                         st.write(f"## 🔥 Top 5 chủ đề được bàn luận nhiều nhất năm {year} của công ty **{df.iloc[idx]['Company Name']}**")
 
                         df_year = df_company[df_company['Năm'] == year]
@@ -201,5 +231,6 @@ if query_vi:
                                 st.pyplot(fig)
 
                     st.divider()
+
 
 
